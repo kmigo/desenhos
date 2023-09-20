@@ -19,16 +19,22 @@ class _QuebraCabecaState extends State<QuebraCabeca> {
   final altura = 50.0;
   PecaRegra? pecaVazia;
   List<Widget> childreen = [];
+  List<AnimationController> controls = [];
   List<List<int>> posicoes = [];
-  criarBoard() {
+  bool reiniciar = true;
+  criarBoard({bool fallbalck = false}) {
+    for (var element in controls) {
+      element.dispose();
+    }
+    pecaVazia=null;
     childreen = [];
-    
+    controls = [];
+    posicoes = [];
     List<PecaRegra> pecas = [];
     int count = 0;
     for (int linha = 0; linha < linhas; linha++) {
       posicoes.add([]);
       for (int coluna = 0; coluna < colunas; coluna++) {
-        print(linha);
         posicoes[linha].add(count);
         final peca = PecaRegra(
             index: count,
@@ -42,158 +48,187 @@ class _QuebraCabecaState extends State<QuebraCabeca> {
     }
 
     posicoes = shuffleSlidingPuzzle(linhas, colunas);
-    //posicoes = [[1,2,3],[4,5,6],[7,8,0]];
+    if (fallbalck) {
+      posicoes = [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 0]
+      ];
+    }
+
     final indexs = [...posicoes.expand((element) => element)];
 
-    for(int i = 0; i < indexs.length; i++) {
+    for (int i = 0; i < indexs.length; i++) {
       final index = indexs[i];
 
       pecas[i] = pecas[i].copyWith(index: index);
       posicoes[pecas[i].linha][pecas[i].coluna] = index;
     }
-  print(indexs);
-      childreen = [
-      ...pecas.map<Widget>((e) => 
-      PecaWidget(
-          regraInicial: e,
-          obterPecaVazia: () => pecaVazia!,
-          atualizaPecaVazia: (peca) {
 
-              posicoes[peca.linha][peca.coluna] = 0;
-              posicoes[pecaVazia!.linha][pecaVazia!.coluna] = peca.index;
-              final win = isMatrixInOrder(posicoes, linhas, colunas);
-              print(win);
-              if(win){
-                showDialog(context: context, builder: (ctx){
-                  return AlertDialog(
-                    title: Text('Parabens'),
-                    content: Text('Voce ganhou'),
-                    actions: [
-                      TextButton(onPressed: (){
-                        Navigator.of(context).pop();
-                        criarBoard();
-                        setState(() {
-                          
-                        });
-                      }, child: Text('Jogar novamente'))
-                    ],
+    childreen = [
+      ...pecas
+          .map<Widget>((e) => PecaWidget(
+                regraInicial: e,
+                obterPecaVazia: () => pecaVazia!,
+                animationController: (vsync) {
+                  final control = AnimationController(
+                    duration: const Duration(milliseconds: 400),
+                    vsync: vsync,
                   );
-                });
-              }
+                  return control;
+                },
+                atualizaPecaVazia: (peca) {
+                  posicoes[peca.linha][peca.coluna] = 0;
+                  posicoes[pecaVazia!.linha][pecaVazia!.coluna] = peca.index;
+                  pecaVazia = peca;
+                  final win = isMatrixInOrder(posicoes, linhas, colunas);
+                  if (win) {
+                    showDialog(
+                        context: context,
+                        builder: (ctx) {
+                          return AlertDialog(
+                            title: Text('Parabens'),
+                            content: Text('Voce ganhou'),
+                            actions: [
+                              TextButton(
+                                  onPressed: () async {
+                                    Navigator.of(context).pop();
+                                    criarBoard();
 
-            pecaVazia = peca;
+                                    for (var control in controls) {
+                                      control.forward();
+                                    }
+                                    setState(() {
+                                      reiniciar = true;
+                                    });
+                                  },
+                                  child: Text('Jogar novamente'))
+                            ],
+                          );
+                        });
+                  }
 
-           print("\ncoluna vertical:\n${posicoes.join('\n coluna vertical:\n')}");
-          },
-        )).toList()
-      
+                  
+
+                
+                },
+              ))
+          .toList()
     ];
-  final indexVazio = pecas.indexWhere((element) => element.index == 0);
-  pecaVazia = pecas[indexVazio];
-  childreen[indexVazio] = Positioned(child: Container(),);
-print("\ncoluna vertical:\n${posicoes.join('\n coluna vertical:\n')}");
-
+    final indexVazio = pecas.indexWhere((element) => element.index == 0);
+    pecaVazia = pecas[indexVazio];
+    childreen[indexVazio] = Positioned(
+      child: Container(),
+    );
+    print("\ncoluna vertical:\n${posicoes.join('\n coluna vertical:\n')}");
   }
 
+  List<List<int>> shuffleSlidingPuzzle(int rows, int cols) {
+    List<List<int>> matrix = List.generate(
+        rows, (i) => List.generate(cols, (j) => i * cols + j + 1));
+    matrix[rows - 1][cols - 1] = 0;
+    int emptyRow = rows - 1;
+    int emptyCol = cols - 1;
+    int moves = max(100,
+        rows * cols * 10); // número de movimentos aleatórios para embaralhar
+    Random random = Random();
 
-List<List<int>> shuffleSlidingPuzzle(int rows, int cols) {
-  List<List<int>> matrix = List.generate(rows, (i) => List.generate(cols, (j) => i * cols + j + 1));
-  matrix[rows - 1][cols - 1] = 0;
-  int emptyRow = rows - 1;
-  int emptyCol = cols - 1;
-  int moves = max(100, rows * cols * 10);  // número de movimentos aleatórios para embaralhar
-  Random random = Random();
-
-  void swap(int x1, int y1, int x2, int y2) {
-    int temp = matrix[x1][y1];
-    matrix[x1][y1] = matrix[x2][y2];
-    matrix[x2][y2] = temp;
-  }
-
-  for (int i = 0; i < moves; i++) {
-    List<int> moveOptions = [0, 1, 2, 3]; // 0:UP, 1:DOWN, 2:LEFT, 3:RIGHT
-    while (moveOptions.isNotEmpty) {
-      int move = moveOptions.removeAt(random.nextInt(moveOptions.length));
-      bool moved = false;
-
-      switch (move) {
-        case 0:  // UP
-          if (emptyRow > 0) {
-            swap(emptyRow, emptyCol, emptyRow - 1, emptyCol);
-            emptyRow--;
-            moved = true;
-          }
-          break;
-        case 1:  // DOWN
-          if (emptyRow < rows - 1) {
-            swap(emptyRow, emptyCol, emptyRow + 1, emptyCol);
-            emptyRow++;
-            moved = true;
-          }
-          break;
-        case 2:  // LEFT
-          if (emptyCol > 0) {
-            swap(emptyRow, emptyCol, emptyRow, emptyCol - 1);
-            emptyCol--;
-            moved = true;
-          }
-          break;
-        case 3:  // RIGHT
-          if (emptyCol < cols - 1) {
-            swap(emptyRow, emptyCol, emptyRow, emptyCol + 1);
-            emptyCol++;
-            moved = true;
-          }
-          break;
-      }
-      if (moved) break;  // se um movimento válido foi feito, saia do loop e continue com o próximo movimento
+    void swap(int x1, int y1, int x2, int y2) {
+      int temp = matrix[x1][y1];
+      matrix[x1][y1] = matrix[x2][y2];
+      matrix[x2][y2] = temp;
     }
+
+    for (int i = 0; i < moves; i++) {
+      List<int> moveOptions = [0, 1, 2, 3]; // 0:UP, 1:DOWN, 2:LEFT, 3:RIGHT
+      while (moveOptions.isNotEmpty) {
+        int move = moveOptions.removeAt(random.nextInt(moveOptions.length));
+        bool moved = false;
+
+        switch (move) {
+          case 0: // UP
+            if (emptyRow > 0) {
+              swap(emptyRow, emptyCol, emptyRow - 1, emptyCol);
+              emptyRow--;
+              moved = true;
+            }
+            break;
+          case 1: // DOWN
+            if (emptyRow < rows - 1) {
+              swap(emptyRow, emptyCol, emptyRow + 1, emptyCol);
+              emptyRow++;
+              moved = true;
+            }
+            break;
+          case 2: // LEFT
+            if (emptyCol > 0) {
+              swap(emptyRow, emptyCol, emptyRow, emptyCol - 1);
+              emptyCol--;
+              moved = true;
+            }
+            break;
+          case 3: // RIGHT
+            if (emptyCol < cols - 1) {
+              swap(emptyRow, emptyCol, emptyRow, emptyCol + 1);
+              emptyCol++;
+              moved = true;
+            }
+            break;
+        }
+        if (moved)
+          break; // se um movimento válido foi feito, saia do loop e continue com o próximo movimento
+      }
+    }
+    return matrix;
   }
-  return matrix;
-}
 
   @override
   void initState() {
     super.initState();
-    criarBoard();
+    criarBoard(fallbalck: true);
   }
 
-bool isMatrixInOrder(List<List<int>> matrix, int numRows, int numCols) {
-  if (matrix.isEmpty || matrix[0].isEmpty) return false;
+  bool isMatrixInOrder(List<List<int>> matrix, int numRows, int numCols) {
+    if (matrix.isEmpty || matrix[0].isEmpty) return false;
 
-  int zeroEquivalent = numRows * numCols;
+    int zeroEquivalent = numRows * numCols;
 
-  for (int i = 0; i < numRows; i++) {
-    for (int j = 0; j < numCols; j++) {
-      // Substitui o valor zero pelo seu equivalente para comparação
-      int currentValue = matrix[i][j] == 0 ? zeroEquivalent : matrix[i][j];
+    for (int i = 0; i < numRows; i++) {
+      for (int j = 0; j < numCols; j++) {
+        // Substitui o valor zero pelo seu equivalente para comparação
+        int currentValue = matrix[i][j] == 0 ? zeroEquivalent : matrix[i][j];
 
-      // Verifica se não é o último elemento da última linha
-      if (i == numRows - 1 && j == numCols - 1) continue;
+        // Verifica se não é o último elemento da última linha
+        if (i == numRows - 1 && j == numCols - 1) continue;
 
-      // Obtenha o próximo elemento
-      int nextI = j == numCols - 1 ? i + 1 : i;
-      int nextJ = j == numCols - 1 ? 0 : j + 1;
+        // Obtenha o próximo elemento
+        int nextI = j == numCols - 1 ? i + 1 : i;
+        int nextJ = j == numCols - 1 ? 0 : j + 1;
 
-      // Substitui o valor zero pelo seu equivalente para comparação
-      int nextValue = matrix[nextI][nextJ] == 0 ? zeroEquivalent : matrix[nextI][nextJ];
+        // Substitui o valor zero pelo seu equivalente para comparação
+        int nextValue =
+            matrix[nextI][nextJ] == 0 ? zeroEquivalent : matrix[nextI][nextJ];
 
-      // Compare o elemento atual com o próximo
-      if (currentValue > nextValue) {
-        return false;
+        // Compare o elemento atual com o próximo
+        if (currentValue > nextValue) {
+          return false;
+        }
       }
     }
+    return true;
   }
-  return true;
-}
-
-  
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-          child: Stack(
+          child: reiniciar ? Center(
+            child:   ElevatedButton(onPressed: (){
+              setState(() {
+                reiniciar = false;
+              });
+            }, child: Text('Iniciar')),
+          ): Stack(
         children: childreen,
       )),
     );
@@ -230,10 +265,12 @@ class PecaWidget extends StatefulWidget {
   final PecaRegra regraInicial;
   final PecaRegra Function() obterPecaVazia;
   final Function(PecaRegra) atualizaPecaVazia;
+  final AnimationController Function(TickerProvider) animationController;
   const PecaWidget(
       {super.key,
       required this.regraInicial,
       required this.obterPecaVazia,
+      required this.animationController,
       required this.atualizaPecaVazia});
 
   @override
@@ -256,10 +293,7 @@ class _PecaWidgetState extends State<PecaWidget>
     super.initState();
     regraAtual = widget.regraInicial;
     novaRegra = regraAtual;
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
+    _animationController = widget.animationController(this);
 
     _progressAnimation = Tween<double>(
       begin: 0,
@@ -282,7 +316,7 @@ class _PecaWidgetState extends State<PecaWidget>
               top: top + ((novoTop - top) * _animationController.value),
               child: InkWell(
                 onTap: () {
-                  if(_animationController.isAnimating) return;
+                  if (_animationController.isAnimating) return;
                   _animationController.reset();
                   novaRegra = widget
                       .obterPecaVazia()
