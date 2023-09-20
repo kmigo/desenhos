@@ -1,6 +1,7 @@
 
 
 import 'package:desenhos/src/quebracabeca.dart';
+import 'package:desenhos/utils.dart';
 
 import 'package:flutter/material.dart';
 
@@ -15,6 +16,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
+      navigatorKey: navigatoKey,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,

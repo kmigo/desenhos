@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:desenhos/utils.dart';
 import 'package:flutter/material.dart';
 
 class QuebraCabeca extends StatefulWidget {
@@ -12,17 +13,20 @@ class QuebraCabeca extends StatefulWidget {
 }
 
 class _QuebraCabecaState extends State<QuebraCabeca> {
-  final linhas = 3;
-  final colunas = 3;
+  final linhas = 4;
+  final colunas = 4;
 
-  final largura = 50.0;
-  final altura = 50.0;
+  double largura = 50.0;
+  double altura = 50.0;
   PecaRegra? pecaVazia;
   List<Widget> childreen = [];
   List<AnimationController> controls = [];
   List<List<int>> posicoes = [];
   bool reiniciar = true;
   criarBoard({bool fallbalck = false}) {
+    final width = MediaQuery.of(navigatoKey.currentContext!).size.width / colunas;
+    largura = width;
+    altura = width;
     for (var element in controls) {
       element.dispose();
     }
@@ -49,11 +53,7 @@ class _QuebraCabecaState extends State<QuebraCabeca> {
 
     posicoes = shuffleSlidingPuzzle(linhas, colunas);
     if (fallbalck) {
-      posicoes = [
-        [1, 2, 3],
-        [4, 5, 6],
-        [7, 8, 0]
-      ];
+      posicoes =   List.generate(linhas, (i) => List.generate(colunas, (j) => i * colunas + j ));
     }
 
     final indexs = [...posicoes.expand((element) => element)];
@@ -185,7 +185,7 @@ class _QuebraCabecaState extends State<QuebraCabeca> {
   @override
   void initState() {
     super.initState();
-    criarBoard(fallbalck: true);
+    criarBoard(fallbalck: false);
   }
 
   bool isMatrixInOrder(List<List<int>> matrix, int numRows, int numCols) {
@@ -229,6 +229,7 @@ class _QuebraCabecaState extends State<QuebraCabeca> {
               });
             }, child: Text('Iniciar')),
           ): Stack(
+
         children: childreen,
       )),
     );
