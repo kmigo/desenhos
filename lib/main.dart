@@ -1,7 +1,7 @@
 
-import 'package:desenhos/src/map.dart';
+
 import 'package:desenhos/src/quebracabeca.dart';
-import 'package:desenhos/src/soccer.dart';
+
 import 'package:flutter/material.dart';
 
 void main() {
@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home:   SoccerDrawn(),
+      home:   QuebraCabeca(),
     );
   }
 }

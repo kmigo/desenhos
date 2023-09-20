@@ -1,4 +1,5 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -11,52 +12,120 @@ class QuebraCabeca extends StatefulWidget {
 }
 
 class _QuebraCabecaState extends State<QuebraCabeca> {
-  final linhas = 4;
-  final colunas = 4;
+  final linhas = 3;
+  final colunas = 3;
 
   final largura = 50.0;
   final altura = 50.0;
   PecaRegra? pecaVazia;
   List<Widget> childreen = [];
-
+  List<List<int>> posicoes = [];
   criarBoard() {
     childreen = [];
-    int numeroAleatorio = Random().nextInt(colunas * linhas - 1);
+    
+    List<PecaRegra> pecas = [];
     int count = 0;
     for (int linha = 0; linha < linhas; linha++) {
+      posicoes.add([]);
       for (int coluna = 0; coluna < colunas; coluna++) {
-        if (count == numeroAleatorio) {
-          pecaVazia = PecaRegra(
-              largura: largura, altura: altura, linha: linha, coluna: coluna);
-          childreen.add(Positioned(child: Container()));
-        } else {
-          childreen.add(PecaWidget(
-              atualizaPecaVazia: (peca) {
-                pecaVazia = peca;
-              },
-              obterPecaVazia: () {
-                return pecaVazia!;
-              },
-              regraInicial: PecaRegra(
-                  largura: largura,
-                  altura: altura,
-                  linha: linha,
-                  coluna: coluna)));
-        }
-
+        posicoes[linha].add(count);
+        final peca = PecaRegra(
+            index: count,
+            largura: largura,
+            altura: altura,
+            linha: linha,
+            coluna: coluna);
+        pecas.add(peca);
         count = count + 1;
       }
     }
+    final indexs = List.generate(colunas * linhas, (index) => index).toList()..shuffle();
+    for(int i = 0; i < indexs.length; i++) {
+      final index = indexs[i];
+
+      pecas[i] = pecas[i].copyWith(index: index);
+      posicoes[pecas[i].coluna][pecas[i].linha] = index;
+    }
+  
+      childreen = [
+      ...pecas.map<Widget>((e) => PecaWidget(
+          regraInicial: e,
+          obterPecaVazia: () => pecaVazia!,
+          atualizaPecaVazia: (peca) {
+
+              posicoes[peca.coluna][peca.linha] = 0;
+              posicoes[pecaVazia!.coluna][pecaVazia!.linha] = peca.index;
+              if(isMatrixInOrder(posicoes, linhas, colunas)){
+                showDialog(context: context, builder: (ctx){
+                  return AlertDialog(
+                    title: Text('Parabens'),
+                    content: Text('Voce ganhou'),
+                    actions: [
+                      TextButton(onPressed: (){
+                        Navigator.of(context).pop();
+                        criarBoard();
+                        setState(() {
+                          
+                        });
+                      }, child: Text('Jogar novamente'))
+                    ],
+                  );
+                });
+              }
+
+            pecaVazia = peca;
+
+           print("\ncoluna vertical:\n${posicoes.join('\n coluna vertical:\n')}");
+          },
+        )).toList()
+      
+    ];
+  final indexVazio = pecas.indexWhere((element) => element.index == 0);
+  pecaVazia = pecas[indexVazio];
+  childreen[indexVazio] = Positioned(child: Container(),);
+print("\ncoluna vertical:\n${posicoes.join('\n coluna vertical:\n')}");
+
   }
 
   @override
   void initState() {
     super.initState();
+    criarBoard();
   }
+
+bool isMatrixInOrder(List<List<int>> matrix, int numRows, int numCols) {
+  if (matrix.isEmpty || matrix[0].isEmpty) return false;
+
+  int zeroEquivalent = numRows * numCols;
+
+  for (int i = 0; i < numRows; i++) {
+    for (int j = 0; j < numCols; j++) {
+      // Substitui o valor zero pelo seu equivalente para comparação
+      int currentValue = matrix[i][j] == 0 ? zeroEquivalent : matrix[i][j];
+
+      // Verifica se não é o último elemento da última linha
+      if (i == numRows - 1 && j == numCols - 1) continue;
+
+      // Obtenha o próximo elemento
+      int nextI = j == numCols - 1 ? i + 1 : i;
+      int nextJ = j == numCols - 1 ? 0 : j + 1;
+
+      // Substitui o valor zero pelo seu equivalente para comparação
+      int nextValue = matrix[nextI][nextJ] == 0 ? zeroEquivalent : matrix[nextI][nextJ];
+
+      // Compare o elemento atual com o próximo
+      if (currentValue > nextValue) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+  
 
   @override
   Widget build(BuildContext context) {
-    criarBoard();
     return Scaffold(
       body: SafeArea(
           child: Stack(
@@ -71,21 +140,20 @@ class PecaRegra {
   final double altura;
   final int linha;
   final int coluna;
+  final int index;
   const PecaRegra({
     required this.largura,
     required this.altura,
     required this.linha,
     required this.coluna,
+    required this.index,
   });
 
-  PecaRegra copyWith({
-    double? largura,
-    double? altura,
-    int? linha,
-    int? coluna,
-  }) {
+  PecaRegra copyWith(
+      {double? largura, double? altura, int? linha, int? coluna, int? index}) {
     return PecaRegra(
       largura: largura ?? this.largura,
+      index: index ?? this.index,
       altura: altura ?? this.altura,
       linha: linha ?? this.linha,
       coluna: coluna ?? this.coluna,
@@ -97,6 +165,7 @@ class PecaWidget extends StatefulWidget {
   final PecaRegra regraInicial;
   final PecaRegra Function() obterPecaVazia;
   final Function(PecaRegra) atualizaPecaVazia;
+
   const PecaWidget(
       {super.key,
       required this.regraInicial,
@@ -105,6 +174,10 @@ class PecaWidget extends StatefulWidget {
 
   @override
   State<PecaWidget> createState() => _PecaWidgetState();
+  @override
+  String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
+    return '${regraInicial.index}';
+  }
 }
 
 class _PecaWidgetState extends State<PecaWidget>
@@ -113,6 +186,7 @@ class _PecaWidgetState extends State<PecaWidget>
   late Animation<double> _progressAnimation;
   PecaRegra? regraAtual;
   PecaRegra? novaRegra;
+
   @override
   void initState() {
     super.initState();
@@ -144,9 +218,10 @@ class _PecaWidgetState extends State<PecaWidget>
               top: top + ((novoTop - top) * _animationController.value),
               child: InkWell(
                 onTap: () {
-                
                   _animationController.reset();
-                  novaRegra = widget.obterPecaVazia();
+                  novaRegra = widget
+                      .obterPecaVazia()
+                      .copyWith(index: regraAtual!.index);
                   final novaLinha = novaRegra!.linha - regraAtual!.linha;
                   final novaColuna = novaRegra!.coluna - regraAtual!.coluna;
                   if ([1, -1].contains(novaColuna + novaLinha) &&
@@ -166,7 +241,7 @@ class _PecaWidgetState extends State<PecaWidget>
                     decoration:
                         BoxDecoration(border: Border.all(color: Colors.black)),
                     child: Text(
-                      ((regraAtual!.linha * regraAtual!.coluna).toString()),
+                      regraAtual!.index.toString(),
                     )),
               ));
         });
