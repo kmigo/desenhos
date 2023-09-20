@@ -28,6 +28,7 @@ class _QuebraCabecaState extends State<QuebraCabeca> {
     for (int linha = 0; linha < linhas; linha++) {
       posicoes.add([]);
       for (int coluna = 0; coluna < colunas; coluna++) {
+        print(linha);
         posicoes[linha].add(count);
         final peca = PecaRegra(
             index: count,
@@ -40,15 +41,15 @@ class _QuebraCabecaState extends State<QuebraCabeca> {
       }
     }
 
-    shuffleMatrix(posicoes,100);
-
+    posicoes = shuffleSlidingPuzzle(linhas, colunas);
+    //posicoes = [[1,2,3],[4,5,6],[7,8,0]];
     final indexs = [...posicoes.expand((element) => element)];
 
     for(int i = 0; i < indexs.length; i++) {
       final index = indexs[i];
 
       pecas[i] = pecas[i].copyWith(index: index);
-      //posicoes[pecas[i].coluna][pecas[i].linha] = index;
+      posicoes[pecas[i].linha][pecas[i].coluna] = index;
     }
   print(indexs);
       childreen = [
@@ -58,9 +59,11 @@ class _QuebraCabecaState extends State<QuebraCabeca> {
           obterPecaVazia: () => pecaVazia!,
           atualizaPecaVazia: (peca) {
 
-              posicoes[peca.coluna][peca.linha] = 0;
-              posicoes[pecaVazia!.coluna][pecaVazia!.linha] = peca.index;
-              if(isMatrixInOrder(posicoes, linhas, colunas)){
+              posicoes[peca.linha][peca.coluna] = 0;
+              posicoes[pecaVazia!.linha][pecaVazia!.coluna] = peca.index;
+              final win = isMatrixInOrder(posicoes, linhas, colunas);
+              print(win);
+              if(win){
                 showDialog(context: context, builder: (ctx){
                   return AlertDialog(
                     title: Text('Parabens'),
@@ -93,30 +96,60 @@ print("\ncoluna vertical:\n${posicoes.join('\n coluna vertical:\n')}");
   }
 
 
- void shuffleMatrix(List<List<int>> matrix, [int moves = 1000]) {
-  int emptyRow = 2;
-  int emptyCol = 2;
+List<List<int>> shuffleSlidingPuzzle(int rows, int cols) {
+  List<List<int>> matrix = List.generate(rows, (i) => List.generate(cols, (j) => i * cols + j + 1));
+  matrix[rows - 1][cols - 1] = 0;
+  int emptyRow = rows - 1;
+  int emptyCol = cols - 1;
+  int moves = max(100, rows * cols * 10);  // número de movimentos aleatórios para embaralhar
   Random random = Random();
 
-  for (int i = 0; i < moves; i++) {
-    List<List<int>> validMoves = [];
-    
-    if (emptyRow > 0) validMoves.add([emptyRow - 1, emptyCol]);
-    if (emptyRow < 2) validMoves.add([emptyRow + 1, emptyCol]);
-    if (emptyCol > 0) validMoves.add([emptyRow, emptyCol - 1]);
-    if (emptyCol < 2) validMoves.add([emptyRow, emptyCol + 1]);
-
-    List<int> chosenMove = validMoves[random.nextInt(validMoves.length)];
-
-    // Troque o espaço vazio com o número escolhido
-    int temp = matrix[emptyRow][emptyCol];
-    matrix[emptyRow][emptyCol] = matrix[chosenMove[0]][chosenMove[1]];
-    matrix[chosenMove[0]][chosenMove[1]] = temp;
-
-    // Atualize a posição do espaço vazio
-    emptyRow = chosenMove[0];
-    emptyCol = chosenMove[1];
+  void swap(int x1, int y1, int x2, int y2) {
+    int temp = matrix[x1][y1];
+    matrix[x1][y1] = matrix[x2][y2];
+    matrix[x2][y2] = temp;
   }
+
+  for (int i = 0; i < moves; i++) {
+    List<int> moveOptions = [0, 1, 2, 3]; // 0:UP, 1:DOWN, 2:LEFT, 3:RIGHT
+    while (moveOptions.isNotEmpty) {
+      int move = moveOptions.removeAt(random.nextInt(moveOptions.length));
+      bool moved = false;
+
+      switch (move) {
+        case 0:  // UP
+          if (emptyRow > 0) {
+            swap(emptyRow, emptyCol, emptyRow - 1, emptyCol);
+            emptyRow--;
+            moved = true;
+          }
+          break;
+        case 1:  // DOWN
+          if (emptyRow < rows - 1) {
+            swap(emptyRow, emptyCol, emptyRow + 1, emptyCol);
+            emptyRow++;
+            moved = true;
+          }
+          break;
+        case 2:  // LEFT
+          if (emptyCol > 0) {
+            swap(emptyRow, emptyCol, emptyRow, emptyCol - 1);
+            emptyCol--;
+            moved = true;
+          }
+          break;
+        case 3:  // RIGHT
+          if (emptyCol < cols - 1) {
+            swap(emptyRow, emptyCol, emptyRow, emptyCol + 1);
+            emptyCol++;
+            moved = true;
+          }
+          break;
+      }
+      if (moved) break;  // se um movimento válido foi feito, saia do loop e continue com o próximo movimento
+    }
+  }
+  return matrix;
 }
 
   @override
@@ -197,7 +230,6 @@ class PecaWidget extends StatefulWidget {
   final PecaRegra regraInicial;
   final PecaRegra Function() obterPecaVazia;
   final Function(PecaRegra) atualizaPecaVazia;
-
   const PecaWidget(
       {super.key,
       required this.regraInicial,
@@ -240,10 +272,10 @@ class _PecaWidgetState extends State<PecaWidget>
     return AnimatedBuilder(
         animation: _animationController,
         builder: (context, animation) {
-          final left = (regraAtual!.linha * regraAtual!.largura);
-          final top = (regraAtual!.altura * regraAtual!.coluna);
-          final novoLeft = (novaRegra!.linha * novaRegra!.largura);
-          final novoTop = (novaRegra!.altura * novaRegra!.coluna);
+          final left = (regraAtual!.coluna * regraAtual!.largura);
+          final top = (regraAtual!.altura * regraAtual!.linha);
+          final novoLeft = (novaRegra!.coluna * novaRegra!.largura);
+          final novoTop = (novaRegra!.altura * novaRegra!.linha);
 
           return Positioned(
               left: left + ((novoLeft - left) * _animationController.value),
