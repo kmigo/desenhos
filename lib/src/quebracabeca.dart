@@ -39,16 +39,21 @@ class _QuebraCabecaState extends State<QuebraCabeca> {
         count = count + 1;
       }
     }
-    final indexs = List.generate(colunas * linhas, (index) => index).toList()..shuffle();
+
+    shuffleMatrix(posicoes,100);
+
+    final indexs = [...posicoes.expand((element) => element)];
+
     for(int i = 0; i < indexs.length; i++) {
       final index = indexs[i];
 
       pecas[i] = pecas[i].copyWith(index: index);
-      posicoes[pecas[i].coluna][pecas[i].linha] = index;
+      //posicoes[pecas[i].coluna][pecas[i].linha] = index;
     }
-  
+  print(indexs);
       childreen = [
-      ...pecas.map<Widget>((e) => PecaWidget(
+      ...pecas.map<Widget>((e) => 
+      PecaWidget(
           regraInicial: e,
           obterPecaVazia: () => pecaVazia!,
           atualizaPecaVazia: (peca) {
@@ -86,6 +91,33 @@ class _QuebraCabecaState extends State<QuebraCabeca> {
 print("\ncoluna vertical:\n${posicoes.join('\n coluna vertical:\n')}");
 
   }
+
+
+ void shuffleMatrix(List<List<int>> matrix, [int moves = 1000]) {
+  int emptyRow = 2;
+  int emptyCol = 2;
+  Random random = Random();
+
+  for (int i = 0; i < moves; i++) {
+    List<List<int>> validMoves = [];
+    
+    if (emptyRow > 0) validMoves.add([emptyRow - 1, emptyCol]);
+    if (emptyRow < 2) validMoves.add([emptyRow + 1, emptyCol]);
+    if (emptyCol > 0) validMoves.add([emptyRow, emptyCol - 1]);
+    if (emptyCol < 2) validMoves.add([emptyRow, emptyCol + 1]);
+
+    List<int> chosenMove = validMoves[random.nextInt(validMoves.length)];
+
+    // Troque o espaço vazio com o número escolhido
+    int temp = matrix[emptyRow][emptyCol];
+    matrix[emptyRow][emptyCol] = matrix[chosenMove[0]][chosenMove[1]];
+    matrix[chosenMove[0]][chosenMove[1]] = temp;
+
+    // Atualize a posição do espaço vazio
+    emptyRow = chosenMove[0];
+    emptyCol = chosenMove[1];
+  }
+}
 
   @override
   void initState() {
@@ -218,6 +250,7 @@ class _PecaWidgetState extends State<PecaWidget>
               top: top + ((novoTop - top) * _animationController.value),
               child: InkWell(
                 onTap: () {
+                  if(_animationController.isAnimating) return;
                   _animationController.reset();
                   novaRegra = widget
                       .obterPecaVazia()
